@@ -1,51 +1,48 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  collection,
+  addDoc,
+  deleteDoc,
+  updateDoc,
+  doc,
+  onSnapshot,
+} from "firebase/firestore";
+import { db } from "./firebase";
 
 export type Task = {
+  id: string;
   title: string;
   done: boolean;
   deadline?: string;
   category: string;
 };
 
+const tasksRef = collection(db, "tasks");
+
 export const useHandleTasks = () => {
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      title: "買い物",
-      done: true,
-      category: "生活",
-    },
-    {
-      title: "メール返信",
-      done: false,
-      category: "仕事"
+  const [tasks, setTasks] = useState<Task[]>([]);
 
-    },
-    {
-      title: "レポート提出",
-      done: false,
-      category: "仕事"
-    },
-  ]);
+  useEffect(() => {
+    const unsubscribe = onSnapshot(tasksRef, (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Task[];
+      setTasks(data);
+    });
+    return unsubscribe;
+  }, []);
 
-  const addTask = (task: Task) => {
-    setTasks([...tasks, task]);
+  const addTask = async (task: Omit<Task, "id">) => {
+    await addDoc(tasksRef, task);
   };
 
-  const removeTask = (task: Task) => {
-    setTasks(tasks.filter((_) => _ !== task));
+  const removeTask = async (task: Task) => {
+    await deleteDoc(doc(db, "tasks", task.id));
   };
 
-  const setTaskDone = (task: Task, done: boolean) => {
-    setTasks(
-      tasks.map((_) =>
-        _ !== task
-          ? _
-          : {
-              ...task,
-              done,
-            }
-      )
-    );
+  const setTaskDone = async (task: Task, done: boolean) => {
+    await updateDoc(doc(db, "tasks", task.id), { done });
   };
 
   return {
